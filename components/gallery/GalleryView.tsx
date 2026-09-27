@@ -23,34 +23,27 @@ export default function GalleryView({
   const [filter, setFilter] = useState<string>("all");
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
-  const filtered = filter === "all"
-    ? photos
-    : photos.filter((p) => p.moment.category === filter);
+  const filtered =
+    filter === "all" ? photos : photos.filter((p) => p.moment.category === filter);
 
   return (
     <div>
-      {/* Filters */}
+      {/* Category filters */}
       {categories.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-6">
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
           <button
+            id="gallery-filter-all"
             onClick={() => setFilter("all")}
-            className={`px-4 py-2 rounded-xl text-sm font-medium cursor-pointer ${
-              filter === "all"
-                ? "bg-gradient-to-r from-rose-400 to-rose-500 text-white shadow-sm"
-                : "bg-white/60 text-warm-gray/60 hover:text-warm-gray hover:bg-white/80"
-            }`}
+            className={`pixel-btn pixel-btn-sm${filter === "all" ? "" : " pixel-btn-cyan"}`}
           >
             All ({photos.length})
           </button>
           {categories.map((cat) => (
             <button
               key={cat}
+              id={`gallery-filter-${cat}`}
               onClick={() => setFilter(cat)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium cursor-pointer capitalize ${
-                filter === cat
-                  ? "bg-gradient-to-r from-rose-400 to-rose-500 text-white shadow-sm"
-                  : "bg-white/60 text-warm-gray/60 hover:text-warm-gray hover:bg-white/80"
-              }`}
+              className={`pixel-btn pixel-btn-sm${filter === cat ? "" : " pixel-btn-cyan"}`}
             >
               {cat} ({photos.filter((p) => p.moment.category === cat).length})
             </button>
@@ -60,101 +53,157 @@ export default function GalleryView({
 
       {/* Grid */}
       {filtered.length === 0 ? (
-        <div className="glass rounded-2xl p-12 text-center">
-          <p className="text-5xl mb-4">📷</p>
-          <h3 className="text-xl font-[family-name:var(--font-heading)] font-bold text-warm-gray mb-2">
-            No photos yet
-          </h3>
-          <p className="text-warm-gray/60">
-            Upload photos when creating moments in the timeline
+        <div style={{ textAlign: "center", padding: "48px 0" }}>
+          <p style={{ fontSize: 48, marginBottom: 12 }}>📷</p>
+          <p
+            style={{
+              fontFamily: "var(--font-pixel)",
+              fontSize: 8,
+              color: "#ff3fa4",
+              lineHeight: 2,
+              marginBottom: 8,
+            }}
+          >
+            no photos yet
+          </p>
+          <p style={{ fontFamily: "var(--font-vt323)", fontSize: 20, color: "rgba(255,255,255,0.6)" }}>
+            upload photos when creating moments in the timeline
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+            gap: 12,
+          }}
+        >
           {filtered.map((photo, index) => (
             <button
               key={photo.id}
+              id={`gallery-photo-${photo.id}`}
               onClick={() => setLightboxIndex(index)}
-              className="aspect-square rounded-xl overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-1 group relative cursor-pointer"
+              className="gallery-thumb"
+              title={photo.caption || photo.moment.title}
             >
               <img
                 src={photo.filePath}
                 alt={photo.caption || photo.moment.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                <div className="absolute bottom-2 left-2 right-2">
-                  <p className="text-white text-xs font-medium truncate">{photo.moment.title}</p>
-                </div>
+              {/* Overlay on hover */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%)",
+                  display: "flex",
+                  alignItems: "flex-end",
+                  padding: 6,
+                  opacity: 0,
+                  transition: "opacity 0.2s",
+                }}
+                className="gallery-thumb-overlay"
+              >
+                <p
+                  style={{
+                    fontFamily: "var(--font-vt323)",
+                    fontSize: 14,
+                    color: "#fff",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    width: "100%",
+                  }}
+                >
+                  {photo.moment.title}
+                </p>
               </div>
             </button>
           ))}
         </div>
       )}
 
-      {/* Lightbox */}
+      {/* Lightbox — window card style */}
       {lightboxIndex !== null && (
         <div
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 50,
+            background: "rgba(0,0,0,0.92)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
           onClick={() => setLightboxIndex(null)}
         >
-          <button
-            onClick={() => setLightboxIndex(null)}
-            className="absolute top-4 right-4 text-white/70 hover:text-white p-2 cursor-pointer z-10"
+          {/* Window card wrapper */}
+          <div
+            className="window-card animate-fade-in-up"
+            style={{ maxWidth: 800, width: "100%", maxHeight: "90vh" }}
+            onClick={(e) => e.stopPropagation()}
           >
-            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-            </svg>
-          </button>
-
-          {/* Previous */}
-          {lightboxIndex > 0 && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setLightboxIndex(lightboxIndex - 1);
-              }}
-              className="absolute left-4 text-white/70 hover:text-white p-2 cursor-pointer"
-            >
-              <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-              </svg>
-            </button>
-          )}
-
-          {/* Next */}
-          {lightboxIndex < filtered.length - 1 && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setLightboxIndex(lightboxIndex + 1);
-              }}
-              className="absolute right-4 text-white/70 hover:text-white p-2 cursor-pointer"
-            >
-              <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-              </svg>
-            </button>
-          )}
-
-          <div className="max-w-5xl max-h-[85vh] p-4" onClick={(e) => e.stopPropagation()}>
-            <img
-              src={filtered[lightboxIndex].filePath}
-              alt={filtered[lightboxIndex].caption || ""}
-              className="max-w-full max-h-[80vh] object-contain mx-auto rounded-lg"
-            />
-            <div className="text-center mt-3">
-              <p className="text-white font-medium">{filtered[lightboxIndex].moment.title}</p>
-              {filtered[lightboxIndex].caption && (
-                <p className="text-white/60 text-sm mt-1">{filtered[lightboxIndex].caption}</p>
-              )}
-              <p className="text-white/40 text-xs mt-1">
-                {lightboxIndex + 1} / {filtered.length}
-              </p>
+            <div className="window-card-titlebar">
+              <span className="window-card-title">
+                {filtered[lightboxIndex].moment.title}
+                {" — "}
+                {lightboxIndex + 1}/{filtered.length}
+              </span>
+              <div className="window-card-controls">
+                <button
+                  className="window-btn"
+                  onClick={() => setLightboxIndex(null)}
+                  aria-label="Close lightbox"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+            <div className="window-card-body" style={{ padding: 0, display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <img
+                src={filtered[lightboxIndex].filePath}
+                alt={filtered[lightboxIndex].caption || ""}
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: "65vh",
+                  objectFit: "contain",
+                  display: "block",
+                }}
+              />
+              {/* Caption + nav */}
+              <div style={{ padding: "12px 20px", textAlign: "center", width: "100%" }}>
+                {filtered[lightboxIndex].caption && (
+                  <p style={{ fontFamily: "var(--font-vt323)", fontSize: 20, color: "#fff", marginBottom: 8 }}>
+                    {filtered[lightboxIndex].caption}
+                  </p>
+                )}
+                <div style={{ display: "flex", justifyContent: "center", gap: 12 }}>
+                  <button
+                    onClick={() => setLightboxIndex(Math.max(0, lightboxIndex - 1))}
+                    disabled={lightboxIndex === 0}
+                    className="pixel-btn pixel-btn-sm pixel-btn-cyan"
+                  >
+                    ◀ Prev
+                  </button>
+                  <button
+                    onClick={() => setLightboxIndex(Math.min(filtered.length - 1, lightboxIndex + 1))}
+                    disabled={lightboxIndex === filtered.length - 1}
+                    className="pixel-btn pixel-btn-sm"
+                  >
+                    Next ▶
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Inject hover style for overlay — pure CSS workaround since inline :hover isn't possible */}
+      <style>{`
+        .gallery-thumb:hover .gallery-thumb-overlay { opacity: 1 !important; }
+      `}</style>
     </div>
   );
 }

@@ -33,9 +33,10 @@ export default function MomentForm({
   }
 
   return (
-    <form ref={formRef} action={handleSubmit} className="space-y-4">
+    <form ref={formRef} action={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Title */}
       <div>
-        <label htmlFor="moment-title" className="block text-sm font-medium text-warm-gray mb-1">Title *</label>
+        <label htmlFor="moment-title" className="pixel-label">Title *</label>
         <input
           id="moment-title"
           name="title"
@@ -43,41 +44,44 @@ export default function MomentForm({
           required
           defaultValue={moment?.title || ""}
           placeholder="What happened?"
-          className="w-full px-4 py-3 bg-white/60 border border-rose-200 rounded-xl text-warm-gray placeholder:text-warm-gray/30 focus:outline-none focus:ring-2 focus:ring-rose-300"
+          className="pixel-input"
         />
       </div>
 
+      {/* Description */}
       <div>
-        <label htmlFor="moment-description" className="block text-sm font-medium text-warm-gray mb-1">Description</label>
+        <label htmlFor="moment-description" className="pixel-label">Description</label>
         <textarea
           id="moment-description"
           name="description"
           rows={3}
           defaultValue={moment?.description || ""}
           placeholder="Tell the story..."
-          className="w-full px-4 py-3 bg-white/60 border border-rose-200 rounded-xl text-warm-gray placeholder:text-warm-gray/30 focus:outline-none focus:ring-2 focus:ring-rose-300 resize-none"
+          className="pixel-input"
+          style={{ resize: "none" }}
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      {/* Date + Category */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div>
-          <label htmlFor="moment-date" className="block text-sm font-medium text-warm-gray mb-1">Date *</label>
+          <label htmlFor="moment-date" className="pixel-label">Date *</label>
           <input
             id="moment-date"
             name="date"
             type="date"
             required
             defaultValue={moment ? new Date(moment.date).toISOString().split("T")[0] : ""}
-            className="w-full px-4 py-3 bg-white/60 border border-rose-200 rounded-xl text-warm-gray focus:outline-none focus:ring-2 focus:ring-rose-300"
+            className="pixel-input"
           />
         </div>
         <div>
-          <label htmlFor="moment-category" className="block text-sm font-medium text-warm-gray mb-1">Category</label>
+          <label htmlFor="moment-category" className="pixel-label">Category</label>
           <select
             id="moment-category"
             name="category"
             defaultValue={moment?.category || ""}
-            className="w-full px-4 py-3 bg-white/60 border border-rose-200 rounded-xl text-warm-gray focus:outline-none focus:ring-2 focus:ring-rose-300"
+            className="pixel-select"
           >
             <option value="">None</option>
             <option value="date">💑 Date</option>
@@ -88,13 +92,14 @@ export default function MomentForm({
         </div>
       </div>
 
+      {/* Parent */}
       <div>
-        <label htmlFor="moment-parent" className="block text-sm font-medium text-warm-gray mb-1">Parent Moment</label>
+        <label htmlFor="moment-parent" className="pixel-label">Parent Moment</label>
         <select
           id="moment-parent"
           name="parentId"
           defaultValue={moment?.parentId || ""}
-          className="w-full px-4 py-3 bg-white/60 border border-rose-200 rounded-xl text-warm-gray focus:outline-none focus:ring-2 focus:ring-rose-300"
+          className="pixel-select"
         >
           <option value="">None (top-level)</option>
           {parentOptions
@@ -105,29 +110,36 @@ export default function MomentForm({
         </select>
       </div>
 
+      {/* Photos */}
       <div>
-        <label htmlFor="moment-photos" className="block text-sm font-medium text-warm-gray mb-1">Photos</label>
+        <label htmlFor="moment-photos" className="pixel-label">Photos</label>
         <input
           id="moment-photos"
           name="photos"
           type="file"
           accept="image/*"
           multiple
-          className="w-full px-4 py-3 bg-white/60 border border-rose-200 rounded-xl text-warm-gray file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-rose-100 file:text-rose-500 file:cursor-pointer focus:outline-none focus:ring-2 focus:ring-rose-300"
+          className="pixel-input"
+          style={{
+            cursor: "pointer",
+          }}
         />
       </div>
 
-      <div className="flex gap-3 pt-2">
+      {/* Actions */}
+      <div style={{ display: "flex", gap: 10, paddingTop: 4 }}>
         <button
           type="button"
           onClick={onDone}
-          className="flex-1 py-3 border border-rose-200 text-warm-gray rounded-xl font-medium hover:bg-rose-50 cursor-pointer"
+          className="pixel-btn pixel-btn-cyan"
+          style={{ flex: 1 }}
         >
           Cancel
         </button>
         <button
           type="submit"
-          className="flex-1 py-3 bg-gradient-to-r from-rose-400 to-rose-500 text-white rounded-xl font-medium shadow-md hover:shadow-lg cursor-pointer"
+          className="pixel-btn"
+          style={{ flex: 1 }}
         >
           {moment ? "Update" : "Create"} Moment
         </button>

@@ -1,22 +1,24 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Inter } from "next/font/google";
+import { Press_Start_2P, VT323 } from "next/font/google";
 import "./globals.css";
 
-const playfair = Playfair_Display({
-  variable: "--font-heading",
+const pressStart2P = Press_Start_2P({
+  variable: "--font-pixel",
+  weight: "400",
   subsets: ["latin"],
   display: "swap",
 });
 
-const inter = Inter({
-  variable: "--font-body",
+const vt323 = VT323({
+  variable: "--font-vt323",
+  weight: "400",
   subsets: ["latin"],
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Our Timeline",
-  description: "A private memory & milestone tracker for us",
+  title: "puyandmbul ♡",
+  description: "a little world made just for us",
 };
 
 export default function RootLayout({
@@ -26,9 +28,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${playfair.variable} ${inter.variable} font-[family-name:var(--font-body)] antialiased`}
-      >
+      <body className={`${pressStart2P.variable} ${vt323.variable}`}>
         {children}
       </body>
     </html>

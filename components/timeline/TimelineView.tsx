@@ -21,118 +21,156 @@ export default function TimelineView({
   return (
     <div>
       {/* Controls */}
-      <div className="flex flex-wrap items-center gap-3 mb-6">
-        <div className="flex bg-white/60 rounded-xl p-1">
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12, marginBottom: 20 }}>
+        {/* View toggle */}
+        <div style={{ display: "flex", gap: 8 }}>
           <button
+            id="timeline-tree-btn"
             onClick={() => setViewMode("tree")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium cursor-pointer ${
-              viewMode === "tree"
-                ? "bg-gradient-to-r from-rose-400 to-rose-500 text-white shadow-sm"
-                : "text-warm-gray/60 hover:text-warm-gray"
-            }`}
+            className={`pixel-btn pixel-btn-sm${viewMode === "tree" ? "" : " pixel-btn-cyan"}`}
           >
             🌳 Tree
           </button>
           <button
+            id="timeline-linear-btn"
             onClick={() => setViewMode("linear")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium cursor-pointer ${
-              viewMode === "linear"
-                ? "bg-gradient-to-r from-rose-400 to-rose-500 text-white shadow-sm"
-                : "text-warm-gray/60 hover:text-warm-gray"
-            }`}
+            className={`pixel-btn pixel-btn-sm${viewMode === "linear" ? "" : " pixel-btn-cyan"}`}
           >
             📜 Linear
           </button>
         </div>
+
+        {/* New moment button */}
         <button
-          onClick={() => {
-            setEditingMoment(null);
-            setShowForm(true);
-          }}
-          className="ml-auto px-5 py-2.5 bg-gradient-to-r from-rose-400 to-rose-500 text-white rounded-xl text-sm font-medium shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+          id="timeline-new-moment-btn"
+          onClick={() => { setEditingMoment(null); setShowForm(true); }}
+          className="pixel-btn"
+          style={{ marginLeft: "auto" }}
         >
           + New Moment
         </button>
       </div>
 
-      {/* Form modal */}
+      {/* Form modal (window card style) */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
-          <div className="glass rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl animate-fade-in-up">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-[family-name:var(--font-heading)] font-bold text-warm-gray">
-                {editingMoment ? "Edit Moment" : "New Moment"}
-              </h2>
-              <button onClick={() => setShowForm(false)} className="p-2 hover:bg-rose-50 rounded-lg cursor-pointer">
-                <svg className="w-5 h-5 text-warm-gray" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                </svg>
-              </button>
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 50,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.7)",
+            padding: 16,
+          }}
+        >
+          <div
+            className="window-card animate-fade-in-up"
+            style={{ width: "100%", maxWidth: 520, maxHeight: "90vh", overflow: "auto" }}
+          >
+            <div className="window-card-titlebar">
+              <span className="window-card-title">
+                {editingMoment ? "✎ Edit Moment" : "+ New Moment"}
+              </span>
+              <div className="window-card-controls">
+                <button
+                  className="window-btn"
+                  onClick={() => setShowForm(false)}
+                  aria-label="Close"
+                >
+                  ×
+                </button>
+              </div>
             </div>
-            <MomentForm
-              moment={editingMoment}
-              parentOptions={allMoments}
-              onDone={() => {
-                setShowForm(false);
-                setEditingMoment(null);
-              }}
-            />
+            <div className="window-card-body">
+              <MomentForm
+                moment={editingMoment}
+                parentOptions={allMoments}
+                onDone={() => { setShowForm(false); setEditingMoment(null); }}
+              />
+            </div>
           </div>
         </div>
       )}
 
       {/* Content */}
       {moments.length === 0 ? (
-        <div className="glass rounded-2xl p-12 text-center">
-          <p className="text-5xl mb-4">✨</p>
-          <h3 className="text-xl font-[family-name:var(--font-heading)] font-bold text-warm-gray mb-2">
-            No moments yet
-          </h3>
-          <p className="text-warm-gray/60 mb-4">
-            Start recording your beautiful journey together
+        <div style={{ textAlign: "center", padding: "48px 0" }}>
+          <p style={{ fontSize: 48, marginBottom: 12 }}>✨</p>
+          <p
+            style={{
+              fontFamily: "var(--font-pixel)",
+              fontSize: 8,
+              color: "#ff3fa4",
+              lineHeight: 2,
+              marginBottom: 8,
+            }}
+          >
+            no moments yet
+          </p>
+          <p style={{ fontFamily: "var(--font-vt323)", fontSize: 20, color: "rgba(255,255,255,0.6)", marginBottom: 16 }}>
+            start recording your beautiful journey together
           </p>
           <button
             onClick={() => setShowForm(true)}
-            className="px-6 py-3 bg-gradient-to-r from-rose-400 to-rose-500 text-white rounded-xl font-medium shadow-md hover:shadow-lg cursor-pointer"
+            className="pixel-btn"
           >
             Create First Moment
           </button>
         </div>
       ) : viewMode === "tree" ? (
-        <div className="space-y-4 stagger-children">
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }} className="stagger-children">
           {moments.map((moment) => (
             <MomentCard
               key={moment.id}
               moment={moment}
-              onEdit={(m) => {
-                setEditingMoment(m);
-                setShowForm(true);
-              }}
+              onEdit={(m) => { setEditingMoment(m); setShowForm(true); }}
               depth={0}
             />
           ))}
         </div>
       ) : (
-        <div className="relative pl-8 space-y-6">
-          {/* Timeline line */}
-          <div className="absolute left-3 top-2 bottom-2 w-0.5 bg-gradient-to-b from-rose-300 to-rose-100" />
-          {allMomentsFlat
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-            .map((moment) => (
-              <div key={moment.id} className="relative">
-                {/* Timeline dot */}
-                <div className="absolute -left-5 top-4 w-3 h-3 bg-rose-400 rounded-full border-2 border-white shadow-sm" />
-                <MomentCard
-                  moment={moment}
-                  onEdit={(m) => {
-                    setEditingMoment(m);
-                    setShowForm(true);
-                  }}
-                  depth={0}
-                  compact
-                />
-              </div>
-            ))}
+        /* Linear view */
+        <div style={{ position: "relative", paddingLeft: 32 }}>
+          {/* Vertical line */}
+          <div
+            style={{
+              position: "absolute",
+              left: 10,
+              top: 8,
+              bottom: 8,
+              width: 2,
+              background: "linear-gradient(to bottom, #ff3fa4, rgba(255,63,164,0.1))",
+            }}
+          />
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {[...allMomentsFlat]
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+              .map((moment) => (
+                <div key={moment.id} style={{ position: "relative" }}>
+                  {/* Timeline dot */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: -27,
+                      top: 14,
+                      width: 10,
+                      height: 10,
+                      background: "#ff3fa4",
+                      border: "2px solid #000",
+                      boxShadow: "0 0 6px rgba(255,63,164,0.8)",
+                    }}
+                  />
+                  <MomentCard
+                    moment={moment}
+                    onEdit={(m) => { setEditingMoment(m); setShowForm(true); }}
+                    depth={0}
+                    compact
+                  />
+                </div>
+              ))}
+          </div>
         </div>
       )}
     </div>

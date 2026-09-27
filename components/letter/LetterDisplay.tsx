@@ -9,120 +9,235 @@ export default function LetterDisplay({ letter }: { letter: Letter }) {
 
   const handleOpen = () => {
     setOpening(true);
-    // Wait for the lid popping animation before showing the contents
     setTimeout(() => {
       setOpened(true);
     }, 600);
   };
 
   return (
-    <div className="max-w-3xl mx-auto">
-      {/* Card */}
-      <div className="glass rounded-3xl p-8 text-center shadow-xl relative overflow-hidden">
-        {/* Decorative corners */}
-        <div className="absolute top-3 left-3 w-8 h-8 border-t-2 border-l-2 border-rose-200 rounded-tl-lg opacity-50" />
-        <div className="absolute top-3 right-3 w-8 h-8 border-t-2 border-r-2 border-rose-200 rounded-tr-lg opacity-50" />
-        <div className="absolute bottom-3 left-3 w-8 h-8 border-b-2 border-l-2 border-rose-200 rounded-bl-lg opacity-50" />
-        <div className="absolute bottom-3 right-3 w-8 h-8 border-b-2 border-r-2 border-rose-200 rounded-br-lg opacity-50" />
-
-        {/* Pill label */}
-        <div className="inline-block px-4 py-1.5 bg-rose-100 text-rose-500 rounded-full text-xs font-medium tracking-wider uppercase mb-6 shadow-sm">
-          A Special Gift Just For You
-        </div>
-
-        {/* Heading */}
-        <h2 className="text-3xl lg:text-4xl font-[family-name:var(--font-heading)] font-bold text-warm-gray mb-2 leading-tight">
+    <div style={{ maxWidth: 600, margin: "0 auto" }}>
+      {/* Heading */}
+      <div style={{ textAlign: "center", marginBottom: 24 }}>
+        <h2
+          className="gradient-heading"
+          style={{
+            fontFamily: "var(--font-pixel)",
+            fontSize: 12,
+            lineHeight: 2.2,
+            marginBottom: 8,
+          }}
+        >
           {letter.heading}
         </h2>
-
         {letter.subheading && (
-          <p className="text-warm-gray/60 italic mb-6">{letter.subheading}</p>
+          <p style={{ fontFamily: "var(--font-vt323)", fontSize: 20, color: "#4fd8f0" }}>
+            {letter.subheading}
+          </p>
         )}
+      </div>
 
-        {/* Present Box or Revealed Content */}
-        <div className="mt-12 mb-8 min-h-[300px] flex items-center justify-center">
-          {!opened ? (
+      {/* Interactive zone */}
+      <div
+        style={{
+          minHeight: 280,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {!opened ? (
+          /* ── Pixel envelope (closed) ── */
+          <div style={{ textAlign: "center" }}>
             <button
+              id="letter-envelope-btn"
               onClick={handleOpen}
               disabled={opening}
-              className="group relative cursor-pointer"
+              style={{ background: "none", border: "none", cursor: "pointer", display: "block", margin: "0 auto" }}
+              aria-label="Open the envelope"
             >
-              {/* The Gift Box */}
-              <div className={`relative w-48 h-48 bg-gradient-to-br from-rose-400 to-rose-500 rounded-xl shadow-xl transition-transform duration-300 ${!opening ? 'group-hover:scale-105 group-hover:rotate-1 group-hover:shadow-2xl' : ''}`}>
-                
-                {/* Vertical Ribbon */}
-                <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-8 bg-white/30 backdrop-blur-sm" />
-                
-                {/* Horizontal Ribbon */}
-                <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-8 bg-white/30 backdrop-blur-sm" />
-
-                {/* Gift Lid */}
-                <div className={`absolute -top-4 -left-2 -right-2 h-14 bg-gradient-to-br from-rose-500 to-rose-600 rounded-lg shadow-lg z-10 ${opening ? 'gift-lid-open' : ''}`}>
-                  {/* Vertical Ribbon on Lid */}
-                  <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-8 bg-white/40" />
-                  
-                  {/* The Bow */}
-                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-20 h-12 flex justify-center items-end">
-                    {/* Left Loop */}
-                    <div className="w-10 h-10 border-4 border-white/60 rounded-full rounded-br-none -mr-2 rotate-12" />
-                    {/* Right Loop */}
-                    <div className="w-10 h-10 border-4 border-white/60 rounded-full rounded-bl-none -ml-2 -rotate-12" />
-                    {/* Center Knot */}
-                    <div className="absolute bottom-1 w-6 h-6 bg-white/80 rounded-full shadow-sm" />
-                  </div>
-                </div>
-              </div>
-              <p className={`text-sm text-rose-400 mt-10 transition-opacity ${opening ? 'opacity-0' : 'group-hover:text-rose-500 animate-pulse-soft'}`}>
-                Tap to open your present 🎁
-              </p>
-            </button>
-          ) : (
-            <div className="letter-reveal w-full max-w-2xl">
-              {/* Opened Present Content */}
-              <div className="bg-white/90 rounded-3xl p-6 sm:p-10 shadow-2xl border border-rose-100 flex flex-col md:flex-row items-center gap-8 text-left relative">
-                
-                <div className="flex-1 space-y-6">
-                  <div className="flex items-center gap-3">
-                    <span className="text-3xl">🎀</span>
-                    <h3 className="font-[family-name:var(--font-heading)] font-bold text-2xl text-rose-500">
-                      Surprise!
-                    </h3>
-                  </div>
-                  
-                  <p className="text-warm-gray leading-relaxed whitespace-pre-wrap font-medium text-lg">
-                    {letter.message}
-                  </p>
-                  
-                  <div>
-                    <p className="text-rose-400 font-medium italic">with all my love ♡</p>
-                  </div>
-                </div>
-
-                {letter.gifPath && (
-                  <div className="shrink-0 md:w-64">
-                    <div className="bg-rose-50 p-2 rounded-2xl rotate-2 hover:rotate-0 transition-transform duration-300 shadow-md">
-                      <img
-                        src={letter.gifPath}
-                        alt="A cute surprise"
-                        className="w-full h-auto rounded-xl object-cover"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              <button
-                onClick={() => {
-                  setOpened(false);
-                  setOpening(false);
-                }}
-                className="mt-8 px-6 py-2 rounded-full border border-rose-200 text-sm text-warm-gray/60 hover:text-rose-500 hover:border-rose-300 hover:bg-rose-50 transition-colors cursor-pointer"
+              {/*
+                ENVELOPE PLACEHOLDER
+                — Replace this div with <img src="/your-envelope.png" …> when you have pixel art ready.
+                The current version is a pure-CSS pixel envelope.
+              */}
+              <div
+                className={`pixel-envelope${opening ? " animate-float" : ""}`}
+                style={{ margin: "0 auto" }}
               >
-                Re-wrap present
+                {/* Envelope flap (top V shape via clip-path) */}
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 80,
+                    clipPath: "polygon(0 0, 50% 55%, 100% 0)",
+                    background: "#ff3fa4",
+                    zIndex: 2,
+                    transformOrigin: "top center",
+                    ...(opening ? { animation: "envelopeOpen 0.6s ease-in-out forwards" } : {}),
+                  }}
+                />
+                {/* Bottom triangle */}
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    height: 80,
+                    clipPath: "polygon(0 100%, 50% 40%, 100% 100%)",
+                    background: "#3b2a6b",
+                  }}
+                />
+                {/* Left triangle */}
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    bottom: 0,
+                    left: 0,
+                    width: "50%",
+                    clipPath: "polygon(0 0, 0 100%, 100% 50%)",
+                    background: "#4a3880",
+                  }}
+                />
+                {/* Right triangle */}
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    bottom: 0,
+                    right: 0,
+                    width: "50%",
+                    clipPath: "polygon(100% 0, 100% 100%, 0 50%)",
+                    background: "#4a3880",
+                  }}
+                />
+                {/* Heart seal */}
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    width: 40,
+                    height: 40,
+                    background: "#ff3fa4",
+                    border: "3px solid #fff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 18,
+                    zIndex: 3,
+                    boxShadow: "0 0 12px rgba(255,63,164,0.8)",
+                  }}
+                >
+                  ♡
+                </div>
+              </div>
+            </button>
+
+            <p
+              style={{
+                fontFamily: "var(--font-vt323)",
+                fontSize: 20,
+                color: "#ff3fa4",
+                marginTop: 16,
+              }}
+              className={`animate-pulse-soft${opening ? " opacity-0" : ""}`}
+            >
+              {opening ? "..." : "tap to open ♡"}
+            </p>
+          </div>
+        ) : (
+          /* ── Revealed letter ── */
+          <div className="letter-reveal" style={{ width: "100%" }}>
+            {/* "Surprise!" header */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                marginBottom: 20,
+              }}
+            >
+              <span style={{ fontSize: 28 }}>🎀</span>
+              <h3
+                className="gradient-heading"
+                style={{
+                  fontFamily: "var(--font-pixel)",
+                  fontSize: 10,
+                  lineHeight: 2,
+                }}
+              >
+                i love you ♡
+              </h3>
+            </div>
+
+            {/* Message */}
+            <div
+              style={{
+                border: "2px solid rgba(79,216,240,0.4)",
+                padding: "20px",
+                marginBottom: 16,
+                background: "rgba(0,0,0,0.4)",
+              }}
+            >
+              <p
+                style={{
+                  fontFamily: "var(--font-vt323)",
+                  fontSize: 22,
+                  color: "#fff",
+                  lineHeight: 1.6,
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                {letter.message}
+              </p>
+            </div>
+
+            {/* Signature */}
+            <p style={{ fontFamily: "var(--font-vt323)", fontSize: 20, color: "#ff3fa4", fontStyle: "italic", textAlign: "right" }}>
+              with all my love ♡
+            </p>
+
+            {/* GIF / image */}
+            {letter.gifPath && (
+              <div style={{ marginTop: 20, textAlign: "center" }}>
+                <div
+                  style={{
+                    display: "inline-block",
+                    border: "4px solid #ff3fa4",
+                    boxShadow: "4px 4px 0 #e0289a",
+                    padding: 4,
+                    background: "#000",
+                    transform: "rotate(2deg)",
+                    transition: "transform 0.3s",
+                  }}
+                >
+                  <img
+                    src={letter.gifPath}
+                    alt="A cute surprise"
+                    style={{ display: "block", maxWidth: "100%", maxHeight: 240 }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Re-close button */}
+            <div style={{ textAlign: "center", marginTop: 20 }}>
+              <button
+                id="letter-rewrap-btn"
+                onClick={() => { setOpened(false); setOpening(false); }}
+                className="pixel-btn pixel-btn-sm pixel-btn-cyan"
+              >
+                ↩ re-seal envelope
               </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

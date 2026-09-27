@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import TimelineView from "@/components/timeline/TimelineView";
+import WindowCard from "@/components/WindowCard";
 
 export default async function TimelinePage() {
   const moments = await prisma.moment.findMany({
@@ -8,9 +9,7 @@ export default async function TimelinePage() {
       children: {
         include: {
           photos: true,
-          children: {
-            include: { photos: true },
-          },
+          children: { include: { photos: true } },
         },
         orderBy: { date: "desc" },
       },
@@ -25,16 +24,23 @@ export default async function TimelinePage() {
   });
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-[family-name:var(--font-heading)] font-bold text-warm-gray">
-            Our Timeline
-          </h1>
-          <p className="text-warm-gray/60 mt-1">Every moment we&apos;ve shared together</p>
-        </div>
+    <div className="animate-fade-in-up" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* Page header */}
+      <div style={{ marginBottom: 4 }}>
+        <h1
+          className="gradient-heading"
+          style={{ fontFamily: "var(--font-pixel)", fontSize: 10, lineHeight: 2.4 }}
+        >
+          ✦ our timeline
+        </h1>
+        <p style={{ fontFamily: "var(--font-vt323)", fontSize: 20, color: "#3b2a6b", marginTop: 4 }}>
+          every moment we&apos;ve shared together
+        </p>
       </div>
-      <TimelineView moments={moments} allMoments={allMoments} />
+
+      <WindowCard title="Timeline — tree of moments" icon="🌳">
+        <TimelineView moments={moments} allMoments={allMoments} />
+      </WindowCard>
     </div>
   );
 }

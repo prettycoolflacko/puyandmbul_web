@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET || "";
   const REDIRECT_URI = process.env.NEXT_PUBLIC_APP_URL 
     ? `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback`
-    : "http://127.0.0.1:3000/api/auth/callback";
+    : `${new URL(request.url).origin}/api/auth/callback`;
 
   const getBasicAuth = () => Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString("base64");
 
