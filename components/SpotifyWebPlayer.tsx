@@ -10,7 +10,11 @@ function getPlaylistContextUri(input?: string): string {
     "63IZYR9lMFKvE0VVl9L2ww"
   ).trim();
 
-  if (val.startsWith("spotify:playlist:") || val.startsWith("spotify:album:") || val.startsWith("spotify:artist:")) {
+  if (
+    val.startsWith("spotify:playlist:") ||
+    val.startsWith("spotify:album:") ||
+    val.startsWith("spotify:artist:")
+  ) {
     return val;
   }
   const match = val.match(/playlist\/([a-zA-Z0-9]+)/);
@@ -24,14 +28,32 @@ export default function SpotifyWebPlayer() {
   const [playerState, setPlayerState] = useState<any>(null);
   const [isReady, setIsReady] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingText, setLoadingText] = useState("▶ Play Music");
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [embedExpanded, setEmbedExpanded] = useState(false);
   const [useEmbed, setUseEmbed] = useState(false);
-  const playerRef = useRef<any>(null);
+  const [embedExpanded, setEmbedExpanded] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [playlistMeta, setPlaylistMeta] = useState<{
+    name: string;
+    artist: string;
+    coverUrl: string;
+  }>({
+    name: "WINDY SUMMER",
+    artist: "Anri — Timely!!",
+    coverUrl: "https://i.scdn.co/image/ab67616d00001e02cfd93d36fe2365f9436587d1",
+  });
 
-  // Refresh token on demand
+  const playerRef = useRef<any>(null);
+  const deviceIdRef = useRef<string | null>(null);
+
+  // Keep ref synced
+  useEffect(() => {
+    deviceIdRef.current = deviceId;
+  }, [deviceId]);
+
+  // Fetch token on mount
   const refreshToken = async (): Promise<string | null> => {
     try {
       const res = await fetch("/api/spotify/token");
@@ -55,6 +77,34 @@ export default function SpotifyWebPlayer() {
       .then((data) => {
         if (!ignore && data?.token) {
           setToken(data.token);
+
+          // Optionally fetch live playlist metadata to ensure latest cover & song name
+          const cleanId = (process.env.NEXT_PUBLIC_SPOTIFY_PLAYLIST_ID || "63IZYR9lMFKvE0VVl9L2ww")
+            .replace(/^spotify:playlist:/, "")
+            .replace(/.*playlist\//, "")
+            .split("?")[0];
+
+          fetch(`https://api.spotify.com/v1/playlists/${cleanId}`, {
+            headers: { Authorization: `Bearer ${data.token}` },
+          })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((pl) => {
+              if (pl && !ignore) {
+                const firstItem = pl.items?.items?.[0] || pl.tracks?.items?.[0];
+                const track = firstItem?.item || firstItem?.track;
+                const cover =
+                  track?.album?.images?.[0]?.url ||
+                  pl.images?.[0]?.url ||
+                  "https://i.scdn.co/image/ab67616d00001e02cfd93d36fe2365f9436587d1";
+
+                setPlaylistMeta({
+                  name: track?.name || pl.name || "Our Playlist",
+                  artist: track?.artists?.[0]?.name ? `${track.artists[0].name} — our playlist` : "our playlist ♡",
+                  coverUrl: cover,
+                });
+              }
+            })
+            .catch(() => {});
         }
       })
       .catch((err) => console.error("Failed to fetch Spotify token:", err));
@@ -66,7 +116,7 @@ export default function SpotifyWebPlayer() {
 
   // Setup Web Playback SDK
   useEffect(() => {
-    if (!token) return;
+    if (!token || useEmbed) return;
 
     let isMounted = true;
 
@@ -74,7 +124,6 @@ export default function SpotifyWebPlayer() {
       const spotifyWindow = window as any;
       if (!spotifyWindow.Spotify || !isMounted) return;
 
-      // Disconnect any existing player instance
       if (playerRef.current) {
         playerRef.current.disconnect();
       }
@@ -85,38 +134,36 @@ export default function SpotifyWebPlayer() {
           const freshToken = await refreshToken();
           cb(freshToken || token);
         },
-        volume: 0.5,
+        volume: 0.7,
       });
 
       playerRef.current = player;
 
       player.addListener("initialization_error", ({ message }: { message: string }) => {
-        console.error("Spotify Init Error:", message);
-        setError(message);
+        console.warn("Spotify Init Error:", message);
       });
 
-      player.addListener("authentication_error", ({ message }: { message: string }) => {
-        console.error("Spotify Auth Error:", message);
-        setError("Spotify token expired. Reconnect below.");
+      player.addListener("authentication_error", async () => {
+        console.warn("Spotify Token refresh needed");
+        await refreshToken();
       });
 
       player.addListener("account_error", ({ message }: { message: string }) => {
-        console.error("Spotify Account Error:", message);
-        setError("Spotify Premium required for Web Playback SDK.");
+        console.warn("Spotify Account Error:", message);
       });
 
       player.addListener("playback_error", ({ message }: { message: string }) => {
-        console.error("Spotify Playback Error:", message);
-        setError(message);
+        console.warn("Spotify Playback Error:", message);
       });
 
       player.addListener("ready", async ({ device_id }: { device_id: string }) => {
         if (!isMounted) return;
         setDeviceId(device_id);
+        deviceIdRef.current = device_id;
         setIsReady(true);
         setError(null);
 
-        // Inform Spotify to transfer playback to this web player
+        // Pre-transfer device playback
         try {
           await fetch("https://api.spotify.com/v1/me/player", {
             method: "PUT",
@@ -130,7 +177,7 @@ export default function SpotifyWebPlayer() {
             }),
           });
         } catch {
-          // Non-critical if transfer fails
+          // Non-critical
         }
       });
 
@@ -155,7 +202,6 @@ export default function SpotifyWebPlayer() {
       });
     };
 
-    // If SDK is already loaded on window
     if ((window as any).Spotify) {
       setupPlayer();
     } else {
@@ -177,20 +223,21 @@ export default function SpotifyWebPlayer() {
         playerRef.current.disconnect();
       }
     };
-  }, [token]);
+  }, [token, useEmbed]);
 
-  // Start playing the playlist
+  // Start playing the playlist with smooth wait-and-retry
   const handlePlayPlaylist = async () => {
     if (!token) return;
     setError(null);
     setIsLoading(true);
+    setLoadingText("Starting...");
 
-    // Official Web Playback SDK method to unlock audio context in browsers
+    // Unlocks browser Web Audio Context
     if (playerRef.current?.activateElement) {
       try {
         await playerRef.current.activateElement();
       } catch {
-        // Continue even if activateElement fails
+        // Ignore
       }
     }
 
@@ -198,9 +245,21 @@ export default function SpotifyWebPlayer() {
 
     try {
       let currentToken = token;
-      let targetId = deviceId;
+      let targetId = deviceIdRef.current;
 
-      // Helper to fetch devices from Spotify
+      // If device hasn't finished connecting, give it up to 2.5 seconds
+      if (!targetId) {
+        setLoadingText("Connecting audio...");
+        for (let i = 0; i < 6; i++) {
+          await new Promise((r) => setTimeout(r, 400));
+          if (deviceIdRef.current) {
+            targetId = deviceIdRef.current;
+            break;
+          }
+        }
+      }
+
+      // Query active devices from Spotify API as backup
       const fetchDevices = async (t: string) => {
         try {
           const devRes = await fetch("https://api.spotify.com/v1/me/player/devices", {
@@ -214,6 +273,7 @@ export default function SpotifyWebPlayer() {
               devData.devices?.[0];
             if (found?.id) {
               setDeviceId(found.id);
+              deviceIdRef.current = found.id;
               return found.id;
             }
           }
@@ -227,7 +287,7 @@ export default function SpotifyWebPlayer() {
         targetId = await fetchDevices(currentToken);
       }
 
-      // Helper to transfer active playback to the web player
+      // Transfer playback to target device
       const transferToDevice = async (id: string | null | undefined, t: string) => {
         if (!id) return;
         try {
@@ -243,13 +303,13 @@ export default function SpotifyWebPlayer() {
             }),
           });
         } catch {
-          // Non-blocking
+          // Ignore
         }
       };
 
       if (targetId) {
         await transferToDevice(targetId, currentToken);
-        await new Promise((r) => setTimeout(r, 400));
+        await new Promise((r) => setTimeout(r, 300));
       }
 
       // Send the play request
@@ -270,12 +330,13 @@ export default function SpotifyWebPlayer() {
 
       let res = await sendPlay(targetId, currentToken);
 
-      // Handle 404 (device propagation / not ready delay on Spotify's network) with retry
+      // Handle 404/502 device delay with progressive retry
       let retries = 0;
       while ((res.status === 404 || res.status === 502) && retries < 3) {
         retries++;
+        setLoadingText("Buffering audio...");
         await new Promise((r) => setTimeout(r, retries * 800));
-        // Check if token needs refresh or re-fetch active device
+
         const refreshed = await refreshToken();
         if (refreshed) currentToken = refreshed;
 
@@ -283,7 +344,7 @@ export default function SpotifyWebPlayer() {
         if (updatedDevice) {
           targetId = updatedDevice;
           await transferToDevice(targetId, currentToken);
-          await new Promise((r) => setTimeout(r, 300));
+          await new Promise((r) => setTimeout(r, 200));
         }
 
         res = await sendPlay(targetId, currentToken);
@@ -293,9 +354,9 @@ export default function SpotifyWebPlayer() {
         const errJson = await res.json().catch(() => null);
         console.warn("Play error details:", res.status, errJson);
         if (res.status === 403) {
-          setError("Spotify Premium is required for Web Playback SDK.");
+          setError("Playback restricted. Try clicking again.");
         } else if (res.status === 404) {
-          setError("Device initializing on Spotify. Try clicking Play again, or switch to Embed Player.");
+          setError("Audio stream connecting. Click Play once more.");
         } else {
           setError(errJson?.error?.message || `Play error (${res.status})`);
         }
@@ -304,9 +365,10 @@ export default function SpotifyWebPlayer() {
       }
     } catch (err: any) {
       console.error("Play request error:", err);
-      setError("Failed to start playback. Check connection.");
+      setError("Audio connecting... click Play again.");
     } finally {
       setIsLoading(false);
+      setLoadingText("▶ Play Music");
     }
   };
 
@@ -321,10 +383,15 @@ export default function SpotifyWebPlayer() {
         await playerRef.current.togglePlay();
       } else if (token) {
         const endpoint = isPlaying ? "pause" : "play";
-        await fetch(`https://api.spotify.com/v1/me/player/${endpoint}${deviceId ? `?device_id=${deviceId}` : ""}`, {
-          method: "PUT",
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        await fetch(
+          `https://api.spotify.com/v1/me/player/${endpoint}${
+            deviceId ? `?device_id=${deviceId}` : ""
+          }`,
+          {
+            method: "PUT",
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
       }
     } catch (err: any) {
       console.error("Toggle play error:", err);
@@ -341,10 +408,15 @@ export default function SpotifyWebPlayer() {
       if (playerRef.current) {
         await playerRef.current.nextTrack();
       } else if (token) {
-        await fetch(`https://api.spotify.com/v1/me/player/next${deviceId ? `?device_id=${deviceId}` : ""}`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        await fetch(
+          `https://api.spotify.com/v1/me/player/next${
+            deviceId ? `?device_id=${deviceId}` : ""
+          }`,
+          {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
       }
     } catch (err: any) {
       console.error("Next track error:", err);
@@ -361,18 +433,37 @@ export default function SpotifyWebPlayer() {
       if (playerRef.current) {
         await playerRef.current.previousTrack();
       } else if (token) {
-        await fetch(`https://api.spotify.com/v1/me/player/previous${deviceId ? `?device_id=${deviceId}` : ""}`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        await fetch(
+          `https://api.spotify.com/v1/me/player/previous${
+            deviceId ? `?device_id=${deviceId}` : ""
+          }`,
+          {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
       }
     } catch (err: any) {
       console.error("Previous track error:", err);
     }
   };
 
-  /* ── No token or embed mode: show embedded Spotify player directly ── */
-  if (!token || useEmbed) {
+  // Toggle Mute
+  const handleToggleMute = async () => {
+    if (!playerRef.current) return;
+    try {
+      if (isMuted) {
+        await playerRef.current.setVolume(0.7);
+        setIsMuted(false);
+      } else {
+        await playerRef.current.setVolume(0);
+        setIsMuted(true);
+      }
+    } catch {}
+  };
+
+  /* ── Embed Mode (Only if explicitly toggled by user) ── */
+  if (useEmbed) {
     const rawId = (
       process.env.NEXT_PUBLIC_SPOTIFY_PLAYLIST_ID ||
       "63IZYR9lMFKvE0VVl9L2ww"
@@ -427,243 +518,309 @@ export default function SpotifyWebPlayer() {
           >
             {embedExpanded ? "▲ Compact view" : "▼ Show tracklist"}
           </button>
-          {token ? (
-            <button
-              onClick={() => setUseEmbed(false)}
-              style={{
-                background: "none",
-                border: "none",
-                color: "#ff3fa4",
-                fontFamily: "var(--font-vt323)",
-                fontSize: 13,
-                cursor: "pointer",
-                padding: 0,
-              }}
-            >
-              ⇄ SDK Player
-            </button>
-          ) : (
-            <a
-              href="/api/spotify/login"
-              style={{
-                color: "rgba(255,255,255,0.4)",
-                fontFamily: "var(--font-vt323)",
-                fontSize: 13,
-                textDecoration: "none",
-              }}
-              title="Requires SPOTIFY_CLIENT_ID in .env"
-            >
-              connect sdk →
-            </a>
-          )}
+          <button
+            onClick={() => setUseEmbed(false)}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#ff3fa4",
+              fontFamily: "var(--font-vt323)",
+              fontSize: 13,
+              cursor: "pointer",
+              padding: 0,
+            }}
+          >
+            ⇄ Pixel Player
+          </button>
         </div>
       </div>
     );
   }
 
+  /* ── Primary Seamless Web Player View ── */
   const currentTrack = playerState?.track_window?.current_track;
   const isPlaying = !playerState?.paused && !!currentTrack;
 
   return (
     <div
       style={{
-        border: "2px solid rgba(79,216,240,0.4)",
-        background: "rgba(0,0,0,0.3)",
+        border: "2px solid #ff3fa4",
+        boxShadow: "3px 3px 0 #2e1f5e",
+        background: "rgba(10, 5, 24, 0.75)",
         padding: "10px",
-        margin: "0 10px",
+        margin: "0 8px",
         display: "flex",
         flexDirection: "column",
         gap: 8,
+        borderRadius: 4,
       }}
     >
-      {/* Error message banner */}
+      {/* Friendly error banner if needed */}
       {error && (
         <div
           style={{
-            background: "rgba(255,63,164,0.15)",
+            background: "rgba(255,63,164,0.18)",
             border: "1px solid #ff3fa4",
-            padding: "5px 7px",
-            fontSize: 11,
+            padding: "4px 6px",
+            fontSize: 12,
             color: "#ff3fa4",
             fontFamily: "var(--font-vt323)",
-            lineHeight: 1.3,
+            lineHeight: 1.2,
             display: "flex",
-            flexDirection: "column",
-            gap: 4,
+            justifyContent: "space-between",
+            alignItems: "center",
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span>⚠ {error}</span>
-            <button
-              onClick={() => setError(null)}
-              style={{
-                background: "none",
-                border: "none",
-                color: "#ff3fa4",
-                cursor: "pointer",
-                fontSize: 12,
-                padding: 0,
-              }}
-            >
-              ✕
-            </button>
-          </div>
+          <span>⚠ {error}</span>
           <button
-            onClick={() => {
-              setError(null);
-              setUseEmbed(true);
-            }}
+            onClick={() => setError(null)}
             style={{
-              background: "rgba(255,63,164,0.25)",
-              border: "1px solid #ff3fa4",
-              color: "#fff",
-              fontFamily: "var(--font-vt323)",
-              fontSize: 12,
+              background: "none",
+              border: "none",
+              color: "#ff3fa4",
               cursor: "pointer",
-              padding: "2px 4px",
-              textAlign: "center",
-              marginTop: 2,
+              fontSize: 12,
+              padding: "0 4px",
             }}
           >
-            ⇄ Switch to embed player (instant playback)
+            ✕
           </button>
         </div>
       )}
 
-      {/* Track info */}
-      {currentTrack ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {currentTrack.album?.images?.[0]?.url && (
-            <img
-              src={currentTrack.album.images[0].url}
-              alt={currentTrack.album.name || ""}
+      {/* Track Info Box */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {/* Album Artwork */}
+        <div style={{ position: "relative", flexShrink: 0 }}>
+          <img
+            src={
+              currentTrack?.album?.images?.[0]?.url ||
+              playlistMeta.coverUrl ||
+              "https://i.scdn.co/image/ab67616d00001e02cfd93d36fe2365f9436587d1"
+            }
+            alt="Album cover"
+            style={{
+              width: 44,
+              height: 44,
+              objectFit: "cover",
+              border: isPlaying ? "2px solid #1DB954" : "2px solid #ff3fa4",
+              display: "block",
+              borderRadius: 3,
+              boxShadow: isPlaying ? "0 0 8px rgba(29, 185, 84, 0.5)" : "none",
+              transition: "border 0.2s ease",
+            }}
+          />
+          {isPlaying && (
+            <div
               style={{
-                width: 36,
-                height: 36,
-                objectFit: "cover",
-                border: "2px solid #4fd8f0",
-                display: "block",
-                flexShrink: 0,
+                position: "absolute",
+                bottom: -2,
+                right: -2,
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: "#1DB954",
+                boxShadow: "0 0 6px #1DB954",
               }}
+              title="Full track playing"
             />
           )}
-          <div style={{ flex: 1, minWidth: 0 }}>
+        </div>
+
+        {/* Title & Artist */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              marginBottom: 2,
+            }}
+          >
+            <span
+              style={{
+                display: "inline-block",
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: isPlaying ? "#1DB954" : isReady ? "#4fd8f0" : "#ff3fa4",
+                boxShadow: isPlaying ? "0 0 4px #1DB954" : "none",
+              }}
+            />
             <p
               style={{
                 fontFamily: "var(--font-pixel)",
                 fontSize: 6,
-                color: "#1DB954",
+                color: isPlaying ? "#1DB954" : isReady ? "#4fd8f0" : "#ff3fa4",
                 textTransform: "uppercase",
-                marginBottom: 2,
+                letterSpacing: 0.5,
               }}
             >
-              {isPlaying ? "▶ Playing" : "⏸ Paused"}
-            </p>
-            <p
-              style={{
-                fontFamily: "var(--font-vt323)",
-                fontSize: 16,
-                color: "#fff",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-              title={currentTrack.name}
-            >
-              {currentTrack.name}
-            </p>
-            <p
-              style={{
-                fontFamily: "var(--font-vt323)",
-                fontSize: 14,
-                color: "rgba(255,255,255,0.5)",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-              title={currentTrack.artists?.[0]?.name}
-            >
-              {currentTrack.artists?.[0]?.name}
+              {isPlaying ? "Full Song Playing" : isReady ? "Audio Ready" : "Connecting..."}
             </p>
           </div>
-        </div>
-      ) : (
-        <div style={{ textAlign: "center", padding: "4px 0" }}>
-          <p style={{ fontFamily: "var(--font-vt323)", fontSize: 16, color: "#4fd8f0" }}>
-            {isReady ? "♪ Player Ready" : "Initializing player..."}
+
+          <p
+            style={{
+              fontFamily: "var(--font-vt323)",
+              fontSize: 17,
+              color: "#fff",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              lineHeight: 1.1,
+            }}
+            title={currentTrack?.name || playlistMeta.name}
+          >
+            {currentTrack?.name || playlistMeta.name}
+          </p>
+
+          <p
+            style={{
+              fontFamily: "var(--font-vt323)",
+              fontSize: 14,
+              color: "rgba(255,255,255,0.6)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+            title={
+              currentTrack?.artists?.[0]?.name || playlistMeta.artist
+            }
+          >
+            {currentTrack?.artists?.[0]?.name || playlistMeta.artist}
           </p>
         </div>
-      )}
+      </div>
 
-      {/* Controls */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      {/* Control Buttons */}
+      <div>
         {!currentTrack ? (
           <button
             onClick={handlePlayPlaylist}
-            disabled={!isReady || isLoading}
-            className="pixel-btn pixel-btn-sm"
+            disabled={isLoading}
+            className="pixel-btn"
             style={{
               width: "100%",
-              background: isReady ? "#1DB954" : "#555",
-              borderColor: isReady ? "#1DB954" : "#555",
-              boxShadow: isReady ? "2px 2px 0 #15803d" : "none",
-              fontSize: 7,
-              opacity: isLoading ? 0.7 : 1,
+              background: "#1DB954",
+              borderColor: "#1DB954",
+              boxShadow: "2px 2px 0 #15803d",
+              color: "#fff",
+              fontSize: 8,
+              padding: "7px 6px",
+              cursor: isLoading ? "wait" : "pointer",
+              opacity: isLoading ? 0.8 : 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
             }}
           >
-            {isLoading ? "Starting..." : isReady ? "▶ Play Playlist" : "Loading..."}
+            <span>{isLoading ? loadingText : "▶ PLAY FULL AUDIO"}</span>
           </button>
         ) : (
-          <div style={{ display: "flex", alignItems: "center", gap: 4, width: "100%" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 5, width: "100%" }}>
+            {/* Previous track */}
             <button
               onClick={handlePrevious}
               className="pixel-btn pixel-btn-sm pixel-btn-cyan"
-              style={{ padding: "3px 6px", fontSize: 9 }}
-              title="Previous Track (Skip Back)"
+              style={{
+                flex: 1,
+                padding: "5px 0",
+                fontSize: 10,
+                textAlign: "center",
+              }}
+              title="Previous song (skip back)"
             >
               ◀◀
             </button>
+
+            {/* Play / Pause toggle */}
             <button
               onClick={handleTogglePlay}
               className="pixel-btn pixel-btn-sm"
               style={{
-                flex: 1,
-                background: "#1DB954",
-                borderColor: "#1DB954",
-                boxShadow: "2px 2px 0 #15803d",
-                fontSize: 9,
+                flex: 1.5,
+                padding: "5px 0",
+                fontSize: 10,
+                background: isPlaying ? "#ff3fa4" : "#1DB954",
+                borderColor: isPlaying ? "#ff3fa4" : "#1DB954",
+                boxShadow: isPlaying ? "2px 2px 0 #2e1f5e" : "2px 2px 0 #15803d",
+                color: "#fff",
+                textAlign: "center",
               }}
-              title={isPlaying ? "Pause" : "Play"}
+              title={isPlaying ? "Pause music" : "Resume music"}
             >
-              {isPlaying ? "⏸" : "▶"}
+              {isPlaying ? "⏸ PAUSE" : "▶ PLAY"}
             </button>
+
+            {/* Next track */}
             <button
               onClick={handleNext}
               className="pixel-btn pixel-btn-sm pixel-btn-cyan"
-              style={{ padding: "3px 6px", fontSize: 9 }}
-              title="Next Track (Skip Forward)"
+              style={{
+                flex: 1,
+                padding: "5px 0",
+                fontSize: 10,
+                textAlign: "center",
+              }}
+              title="Next song (skip forward)"
             >
               ▶▶
+            </button>
+
+            {/* Mute button */}
+            <button
+              onClick={handleToggleMute}
+              style={{
+                background: "none",
+                border: "1px solid rgba(255,255,255,0.2)",
+                color: isMuted ? "#ff3fa4" : "rgba(255,255,255,0.7)",
+                cursor: "pointer",
+                padding: "4px 6px",
+                borderRadius: 3,
+                fontSize: 12,
+              }}
+              title={isMuted ? "Unmute" : "Mute"}
+            >
+              {isMuted ? "🔇" : "🔊"}
             </button>
           </div>
         )}
       </div>
 
-      {/* Switch to embed button */}
-      <div style={{ textAlign: "center", marginTop: 4 }}>
+      {/* Subtle fallback switch */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "2px 2px 0",
+        }}
+      >
+        <span
+          style={{
+            fontFamily: "var(--font-vt323)",
+            fontSize: 12,
+            color: "rgba(255,255,255,0.35)",
+          }}
+        >
+          ♪ our special playlist
+        </span>
         <button
           onClick={() => setUseEmbed(true)}
           style={{
             background: "none",
             border: "none",
-            color: "rgba(255,255,255,0.4)",
+            color: "rgba(79, 216, 240, 0.5)",
             fontFamily: "var(--font-vt323)",
-            fontSize: 13,
+            fontSize: 12,
             cursor: "pointer",
             padding: 0,
           }}
+          title="Switch to official Spotify iframe view"
         >
-          ⇄ Switch to embed player
+          ⇄ embed view
         </button>
       </div>
     </div>

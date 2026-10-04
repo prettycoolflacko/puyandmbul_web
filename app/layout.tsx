@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Press_Start_2P, VT323 } from "next/font/google";
 import "./globals.css";
+import PixelLoadingScreen from "@/components/PixelLoadingScreen";
 
 const pressStart2P = Press_Start_2P({
   variable: "--font-pixel",
@@ -29,6 +30,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${pressStart2P.variable} ${vt323.variable}`}>
+        <PixelLoadingScreen />
         {children}
       </body>
     </html>
